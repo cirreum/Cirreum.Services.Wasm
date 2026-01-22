@@ -1,0 +1,14 @@
+﻿{
+	"compilerOptions": {
+		"target": "ES2022",
+		"module": "ESNext",
+		"lib": [ "DOM.Iterable", "DOM", "ES2022" ],
+		"forceConsistentCasingInFileNames": true,
+		"strict": true,
+		"removeComments": true,
+		"sourceMap": false
+	},
+	"exclude": [
+		"node_modules"
+	]
+}

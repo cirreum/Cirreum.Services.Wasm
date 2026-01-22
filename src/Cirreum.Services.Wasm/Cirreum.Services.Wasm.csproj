@@ -1,0 +1,90 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+	<PropertyGroup>
+		<RootNamespace>Cirreum</RootNamespace>
+		<Description>The Services Infrastructure Library for WebAssembly Client applications.</Description>
+		<PackageTags>cirreum;infrastructure;services;webassembly</PackageTags>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<SupportedPlatform Include="browser" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Microsoft.Extensions.Http" Version="10.0.2" />
+		<PackageReference Include="Microsoft.AspNetCore.Components" Version="10.0.2" />
+		<PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Authentication" Version="10.0.2" />
+		<PackageReference Include="Microsoft.TypeScript.MSBuild" Version="5.9.3">
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		</PackageReference>
+		<PackageReference Include="Cirreum.Startup" Version="1.0.107" />
+		<PackageReference Include="Cirreum.Storage.Browser" Version="1.0.105" />
+	</ItemGroup>
+
+	<ItemGroup Condition="'$(UseLocalComponents)' != 'true'">
+		<PackageReference Include="Cirreum.Core" Version="1.0.37" />
+	</ItemGroup>
+
+	<ItemGroup Condition="'$(UseLocalComponents)' == 'true'">
+		<ProjectReference Include="..\..\..\..\Core\Cirreum.Core\src\Cirreum.Core\Cirreum.Core.csproj" />
+	</ItemGroup>
+	
+	<!-- No JS/TS Maps or Comments -->
+	<PropertyGroup>
+		<TypeScriptRemoveComments>true</TypeScriptRemoveComments>
+		<TypeScriptSourceMap>false</TypeScriptSourceMap>
+	</PropertyGroup>
+
+	<!-- Exclulde JSON Compiler Config files -->
+	<ItemGroup>
+		<Content Update="tsconfig.json" CopyToOutputDirectory="Never" Pack="false" />
+	</ItemGroup>
+
+	<Target Name="DiagnosePackContent" BeforeTargets="GenerateNuspec">
+		<Message Importance="high" Text="========== DIAGNOSING PACK CONTENT ==========" />
+		<Message Importance="high" Text="Content items:" />
+		<Message Importance="high" Text="  %(Content.Identity) -&gt; PackagePath=%(Content.PackagePath), Pack=%(Content.Pack)" />
+		<Message Importance="high" Text="----------------------------------------" />
+		<Message Importance="high" Text="ContentWithTargetPath items:" />
+		<Message Importance="high" Text="  %(ContentWithTargetPath.Identity) -&gt; TargetPath=%(ContentWithTargetPath.TargetPath)" />
+		<Message Importance="high" Text="============================================" />
+	</Target>
+
+	<!-- SDK 9.0.300 Broken with WASM Standalone Razor JS Modules -->
+	<!-- IS THIS STILL AN ISSUE .NET 10.0,100??  -->
+	<Target Name="NormalizeContentPathsForLinux" BeforeTargets="GetTargetPathWithTargetPlatformMoniker" Condition="$([MSBuild]::IsOSPlatform('Linux'))">
+
+		<Message Importance="high" Text="Building on Linux!" />
+
+		<PropertyGroup>
+			<ProjectFullPath>$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)'))</ProjectFullPath>
+		</PropertyGroup>
+
+		<!-- Save Content items with absolute paths for normalization -->
+		<ItemGroup>
+			<_ContentWithAbsolutePaths Include="@(Content)" Condition="$([System.String]::Copy('%(Identity)').StartsWith('/'))">
+				<OriginalIdentity>%(Identity)</OriginalIdentity>
+				<NormalizedPath>$([MSBuild]::MakeRelative($(ProjectFullPath), '%(FullPath)'))</NormalizedPath>
+			</_ContentWithAbsolutePaths>
+		</ItemGroup>
+
+		<!-- Log before modification -->
+		<Message Importance="normal" Text="Found @(_ContentWithAbsolutePaths-&gt;Count()) Content items with absolute paths to normalize" />
+
+		<!-- Remove the items with absolute paths -->
+		<ItemGroup>
+			<Content Remove="@(_ContentWithAbsolutePaths->'%(OriginalIdentity)')" />
+		</ItemGroup>
+
+		<!-- Add them back with normalized paths -->
+		<ItemGroup>
+			<Content Include="@(_ContentWithAbsolutePaths->'%(NormalizedPath)')" />
+		</ItemGroup>
+
+		<!-- Log after modification -->
+		<Message Importance="normal" Text="Normalized paths for Content items on Linux" />
+
+	</Target>
+		
+</Project>

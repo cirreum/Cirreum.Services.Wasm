@@ -1,0 +1,9 @@
+#exclude generated .css files
+*.css
+*.min.css
+*.css.map
+
+#exclude generated .js files
+*.js
+*.min.js
+*.js.map
