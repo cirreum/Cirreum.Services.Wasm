@@ -4,7 +4,7 @@ using Cirreum.Components.Interop;
 
 sealed class DateTimeService(
 	TimeProvider timeProvider,
-	IJSAppInterop appInterop
+	IBrowserCultureInterop browserInterop
 ) : IDateTimeClock {
 
 	public TimeProvider TimeProvider => timeProvider;
@@ -20,7 +20,7 @@ sealed class DateTimeService(
 			try {
 				// First attempt: Try getting directly from browser via JS interop
 				// This is the most reliable method in browser environments
-				var formats = appInterop.GetInternationalFormats();
+				var formats = browserInterop.GetInternationalFormats();
 				if (!string.IsNullOrEmpty(formats.TimeZone)) {
 					_cachedIanaTimeZoneId = formats.TimeZone;
 					return _cachedIanaTimeZoneId;

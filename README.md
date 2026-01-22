@@ -10,7 +10,7 @@
 
 ## Overview
 
-**Cirreum.Services.Wasm** provides essential infrastructure services specifically designed for Blazor WebAssembly applications. It delivers state management, session handling, browser storage integration, and user activity monitoring with a focus on WebAssembly-specific requirements.
+**Cirreum.Services.Wasm** provides the standard browser/WebAssembly runtime implementations of core Cirreum infrastructure services. It delivers WebAssembly-specific implementations for state management, session handling, browser storage integration, and user activity monitoring designed specifically for Blazor WebAssembly applications.
 
 ### Key Features
 
@@ -45,12 +45,12 @@ await localStorage.SetItemAsync("key", value);
 
 ## Architecture
 
-The library follows the Cirreum Foundation Framework pattern with layered simplicity:
+The library is organized into focused service areas:
 
-- **State Layer**: `StateManager`, `StateContainer`, specialized state types
-- **Session Layer**: `SessionManager` with stage-based timeout handling
-- **Storage Layer**: Browser storage abstractions and WebAssembly file system
-- **Infrastructure Layer**: Clock services, CSV utilities, CSP management
+- **State Management**: `StateManager`, `StateContainer`, and specialized state types for thread-safe application state
+- **Session Management**: `SessionManager` with stage-based timeout handling (SafeZone/WatchZone)
+- **Storage Services**: Browser storage abstractions (`ILocalStorageService`, `ISessionStorageService`) and WebAssembly file system integration
+- **Infrastructure Services**: Clock abstraction (`IDateTimeService`), CSV utilities, and CSP management
 
 Session management uses a two-stage approach: SafeZone (0-90% of timeout) for minimal monitoring, and WatchZone (90-100%) for active monitoring with debounced session extension.
 
