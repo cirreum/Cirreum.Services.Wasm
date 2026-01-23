@@ -3,7 +3,7 @@
 	<PropertyGroup>
 		<UseLocalComponents>false</UseLocalComponents>
 		<!-- Auto-enable when using the local dev solution -->
-		<UseLocalComponents Condition="'$(SolutionName)' == 'Cirreum.Runtime.Client.Samples'">true</UseLocalComponents>
+		<UseLocalComponents Condition="'$(SolutionName)' == 'Cirreum.Runtime.Wasm.Samples'">true</UseLocalComponents>
 	</PropertyGroup>
 
 	<!-- Detect if running in CI/CD -->
