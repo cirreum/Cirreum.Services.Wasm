@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir \"C:\\\\Cirreum\\\\Core\\\\Cirreum.Core\")",
+      "Bash(dir \"C:\\\\Cirreum\\\\Runtime\\\\Cirreum.Runtime.Wasm\" /s /b)",
+      "Bash(dir \"C:\\\\Cirreum\\\\Core\\\\Cirreum.Core\\\\src\\\\Cirreum.Core\" /b)",
+      "Bash(dir:*)",
+      "Bash(powershell:*)",
+      "Bash(test:*)",
+      "Bash(where /r \"C:\\\\Cirreum\\\\Core\\\\Cirreum.Core\\\\src\" *.cs)",
+      "Bash(git -C \"C:\\\\Cirreum\\\\Infrastructure\\\\Cirreum.Services.Wasm\" log --oneline -10)"
+    ]
+  }
+}
