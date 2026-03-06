@@ -1,4 +1,5 @@
 ﻿namespace Cirreum.Presence;
+
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -58,7 +59,9 @@ sealed class DefaultUserPresenceMonitor(
 			var token = this._cancellationTokenSource.Token;
 
 			// Start the monitoring loop
-			this._logger.LogDebug("Starting presence monitoring with interval: {Interval}ms", this._monitoringInterval);
+			if (this._logger.IsEnabled(LogLevel.Debug)) {
+				this._logger.LogDebug("Starting presence monitoring with interval: {Interval}ms", this._monitoringInterval);
+			}
 			this._monitoringTask = this.MonitorPresenceLoop(token);
 			this.IsMonitoring = true;
 
@@ -87,7 +90,9 @@ sealed class DefaultUserPresenceMonitor(
 				this._logger.LogError(ex, "Error in presence monitoring loop");
 				try {
 					var nextRetry = ++retryCount;
-					this._logger.LogDebug("Backing off retry attempt {RetryCount}", nextRetry);
+					if (this._logger.IsEnabled(LogLevel.Debug)) {
+						this._logger.LogDebug("Backing off retry attempt {RetryCount}", nextRetry);
+					}
 					await DelayWithBackoff(nextRetry, MaxRetryDelayMs, cancellationToken);
 				} catch (OperationCanceledException) {
 					break;

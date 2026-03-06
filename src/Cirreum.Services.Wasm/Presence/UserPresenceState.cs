@@ -1,7 +1,5 @@
 ﻿namespace Cirreum.Presence;
 
-using Cirreum.State;
-
 sealed class UserPresenceState(
 	IStateManager stateManager
 ) : ScopedNotificationState, IUserPresenceState {
@@ -13,8 +11,8 @@ sealed class UserPresenceState(
 
 	/// <inheritdoc/>
 	public void SetPresence(UserPresence presence) {
-		using var _ = this.CreateNotificationScope();
 		this._presence = presence;
+		this.NotifyStateChanged();
 	}
 
 	protected override void OnStateHasChanged() {
