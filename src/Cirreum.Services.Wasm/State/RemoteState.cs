@@ -1,7 +1,7 @@
-﻿namespace Cirreum.State.DataStores;
+namespace Cirreum.State;
 
 /// <summary>
-/// Abstract base class for client-side data stores that manage in-memory domain data.
+/// Abstract base class for client-side remote state that manages in-memory domain data.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -16,10 +16,10 @@
 /// </remarks>
 /// <example>
 /// <code>
-/// public class ProductsStore(
+/// public class ProductsState(
 ///     IProductApi api,
 ///     IStateManager stateManager
-/// ) : DataStore, IProductsStore {
+/// ) : RemoteState, IProductsState {
 ///
 ///     public IReadOnlyList&lt;Product&gt; Products { get; private set; } = [];
 ///
@@ -28,12 +28,12 @@
 ///     }
 ///
 ///     protected override void OnStateHasChanged() {
-///         stateManager.NotifySubscribers&lt;IProductsStore&gt;(this);
+///         stateManager.NotifySubscribers&lt;IProductsState&gt;(this);
 ///     }
 /// }
 /// </code>
 /// </example>
-public abstract class DataStore : ScopedNotificationState, IDataStore {
+public abstract class RemoteState : ScopedNotificationState, IRemoteState {
 
 	/// <inheritdoc />
 	public bool IsLoaded { get; protected set; }

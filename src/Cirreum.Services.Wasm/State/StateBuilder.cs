@@ -5,11 +5,9 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 
 sealed class StateBuilder(
 	IServiceCollection services
-) : IStateBuilder,
-	IStateBuilderWithDataStores {
+) : IStateBuilder {
 
-	// internal hook just for this assembly
-	IServiceCollection IStateBuilderWithDataStores.Services => services;
+	internal IServiceCollection Services => services;
 
 	/// <inheritdoc/>
 	public IStateBuilder RegisterState<TInterface, TImplementation>()
@@ -23,6 +21,18 @@ sealed class StateBuilder(
 	public IStateBuilder RegisterState<TImplementation>()
 		where TImplementation : class, IApplicationState {
 		services.TryAddScoped<TImplementation>();
+		return this;
+	}
+
+	/// <inheritdoc/>
+	public IStateBuilder RegisterRemoteState<TInterface, TImplementation>()
+		where TInterface : class, IRemoteState
+		where TImplementation : class, TInterface {
+		services.TryAddScoped<TInterface, TImplementation>();
+		if (typeof(IInitializable).IsAssignableFrom(typeof(TImplementation))) {
+			services.AddScoped(sp =>
+				(IInitializable)sp.GetRequiredService<TInterface>());
+		}
 		return this;
 	}
 
