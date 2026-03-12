@@ -1,16 +1,23 @@
-﻿namespace Cirreum.State;
+namespace Cirreum.State;
 /// <summary>
-/// Tracks the state of initialization during application startup.
+/// Tracks the state of application initialization during startup.
 /// </summary>
 /// <remarks>
 /// <para>
 /// This interface provides observable state for displaying initialization progress
-/// to users, typically on a splash screen. It tracks the current status message,
-/// active task count, and any errors that occurred during initialization.
+/// to users, typically on a splash screen. It tracks the current task, completion
+/// progress, and any errors that occurred during initialization.
 /// </para>
 /// <para>
-/// The implementation notifies subscribers when state changes, enabling reactive
-/// UI updates during the initialization process.
+/// The <see cref="IInitializationOrchestrator"/> updates this state as it processes
+/// application user loading, profile enrichment, and registered <see cref="IInitializable"/>
+/// services (including data stores). Components that inherit from
+/// <c>StateComponentBase&lt;IInitializationState&gt;</c> automatically receive updates
+/// for rendering splash screens and loading indicators.
+/// </para>
+/// <para>
+/// Progress can be calculated as <c>CompletedTasks / TotalTasks</c> to drive
+/// a deterministic progress bar.
 /// </para>
 /// </remarks>
 public interface IInitializationState : IScopedNotificationState {
@@ -19,7 +26,8 @@ public interface IInitializationState : IScopedNotificationState {
 	/// Gets a value indicating whether initialization is currently in progress.
 	/// </summary>
 	/// <remarks>
-	/// This property is <c>true</c> when at least one initialization task is active.
+	/// This property is <see langword="true"/> after <see cref="SetTotalTasks"/> is called
+	/// and remains <see langword="true"/> until all tasks have completed.
 	/// </remarks>
 	bool IsInitializing { get; }
 
@@ -27,36 +35,54 @@ public interface IInitializationState : IScopedNotificationState {
 	/// Gets the current status message to display to users.
 	/// </summary>
 	/// <remarks>
-	/// This message is updated as each store begins initialization,
+	/// This message is updated as each service begins initialization,
 	/// typically in the format "Loading Events..." or similar.
+	/// Cleared when all tasks complete.
 	/// </remarks>
 	string DisplayStatus { get; }
 
 	/// <summary>
-	/// Signals the start of an initialization task.
+	/// Gets the total number of initialization tasks to process.
 	/// </summary>
-	/// <param name="status">The status message to display.</param>
-	void StartTask(string status);
+	/// <remarks>
+	/// Set once by the orchestrator at the start of initialization.
+	/// Includes all tasks regardless of whether they are later skipped.
+	/// </remarks>
+	int TotalTasks { get; }
 
 	/// <summary>
-	/// Updates the current display status without changing the task count.
+	/// Gets the number of initialization tasks that have completed.
 	/// </summary>
-	/// <param name="status">The new status message to display.</param>
+	/// <remarks>
+	/// Includes both successfully completed and skipped tasks.
+	/// Progress can be calculated as <c>CompletedTasks / TotalTasks</c>.
+	/// </remarks>
+	int CompletedTasks { get; }
+
+	/// <summary>
+	/// Sets the total number of initialization tasks and begins tracking progress.
+	/// </summary>
+	/// <param name="total">The total number of tasks that will be processed.</param>
+	void SetTotalTasks(int total);
+
+	/// <summary>
+	/// Updates the current display status message.
+	/// </summary>
+	/// <param name="status">The status message to display.</param>
+	/// <remarks>
+	/// Called by the orchestrator when starting each task, but can also be called
+	/// by an <see cref="IInitializable"/> to update progress within its own work.
+	/// </remarks>
 	void SetDisplayStatus(string status);
 
 	/// <summary>
-	/// Signals the completion of an initialization task.
+	/// Signals the completion of an initialization task and advances progress.
 	/// </summary>
 	/// <remarks>
-	/// When all tasks complete (task count reaches zero), the display status is cleared.
+	/// When all tasks complete (<see cref="CompletedTasks"/> equals <see cref="TotalTasks"/>),
+	/// the display status is cleared.
 	/// </remarks>
 	void CompleteTask();
-
-	/// <summary>
-	/// Gets the current number of active initialization tasks.
-	/// </summary>
-	/// <returns>The count of active tasks.</returns>
-	int GetTaskCount();
 
 	/// <summary>
 	/// Gets the collection of errors that occurred during initialization.
@@ -76,7 +102,7 @@ public interface IInitializationState : IScopedNotificationState {
 	/// <summary>
 	/// Logs an error that occurred during store initialization.
 	/// </summary>
-	/// <param name="storeName">The display name of the store that failed.</param>
+	/// <param name="storeName">The display name of the service that failed.</param>
 	/// <param name="exception">The exception that occurred.</param>
 	void LogError(string storeName, Exception exception);
 

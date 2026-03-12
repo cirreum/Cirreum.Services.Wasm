@@ -1,33 +1,39 @@
-﻿namespace Cirreum.State;
+namespace Cirreum.State;
 
 /// <summary>
 /// Default implementation of <see cref="IInitializationState"/> that tracks
-/// data store initialization progress during application startup.
+/// application initialization progress during startup.
 /// </summary>
 /// <remarks>
 /// <para>
-/// This class maintains a count of active initialization tasks and a collection of
-/// any errors that occur. State changes are propagated through the <see cref="IStateManager"/>
-/// to enable reactive UI updates.
+/// This class tracks total and completed task counts to enable deterministic
+/// progress reporting. State changes are propagated through the <see cref="IStateManager"/>
+/// to enable reactive UI updates for splash screens and loading indicators.
 /// </para>
 /// </remarks>
 public class InitializationState(
 	IStateManager stateManager
 ) : ScopedNotificationState, IInitializationState {
 
-	private int _taskCount;
+	private int _totalTasks;
+	private int _completedTasks;
 	private readonly List<InitializationError> _errors = [];
 
 	/// <inheritdoc />
-	public bool IsInitializing => this._taskCount > 0;
+	public bool IsInitializing => this._totalTasks > 0 && this._completedTasks < this._totalTasks;
 
 	/// <inheritdoc />
 	public string DisplayStatus { get; private set; } = string.Empty;
 
 	/// <inheritdoc />
-	public void StartTask(string status) {
-		this._taskCount++;
-		this.DisplayStatus = status;
+	public int TotalTasks => this._totalTasks;
+
+	/// <inheritdoc />
+	public int CompletedTasks => this._completedTasks;
+
+	/// <inheritdoc />
+	public void SetTotalTasks(int total) {
+		this._totalTasks = total;
 		this.NotifyStateChanged();
 	}
 
@@ -39,17 +45,14 @@ public class InitializationState(
 
 	/// <inheritdoc />
 	public void CompleteTask() {
-		if (this._taskCount > 0) {
-			this._taskCount--;
-			if (this._taskCount == 0) {
+		if (this._completedTasks < this._totalTasks) {
+			this._completedTasks++;
+			if (this._completedTasks >= this._totalTasks) {
 				this.DisplayStatus = string.Empty;
 			}
 			this.NotifyStateChanged();
 		}
 	}
-
-	/// <inheritdoc />
-	public int GetTaskCount() => this._taskCount;
 
 	/// <inheritdoc />
 	public IReadOnlyList<InitializationError> Errors => this._errors.AsReadOnly();

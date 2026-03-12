@@ -18,7 +18,7 @@ public interface IApplicationUserFactory {
 	/// <exception cref="ArgumentException">
 	/// Thrown when <paramref name="userState"/> is null.
 	/// </exception>
-	ValueTask<Result<IApplicationUser>> CreateUserAsync(
+	Task<Result<IApplicationUser>> CreateUserAsync(
 		IUserState userState,
 		CancellationToken cancellationToken = default);
 }
