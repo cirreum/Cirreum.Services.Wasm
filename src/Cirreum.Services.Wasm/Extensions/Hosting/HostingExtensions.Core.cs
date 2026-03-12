@@ -44,7 +44,7 @@ public static partial class HostingExtensions {
 		// User Access
 		//
 		services
-			.AddUserAccess();
+			.AddUserAccessor();
 
 		//
 		// Browser Storage
@@ -88,7 +88,7 @@ public static partial class HostingExtensions {
 
 	}
 
-	private static IServiceCollection AddUserAccess(this IServiceCollection services) {
+	private static IServiceCollection AddUserAccessor(this IServiceCollection services) {
 
 		if (services.Any(d => d.ServiceType == typeof(AuthenticationStateProvider))) {
 			services.AddScoped<IUserStateAccessor, UserAccessor>();
@@ -125,11 +125,6 @@ public static partial class HostingExtensions {
 		// builder that leverages the Cirreum.Presence.UserPresenceBuilderExtensions
 		// AddPresenceService which uses a Post-Configure for the desired value.
 		services.TryAddScoped<IUserPresenceService, DefaultUserPresenceService>();
-
-		// Auto-load after authentication
-		services.TryAddEnumerable(
-			ServiceDescriptor
-				.Scoped<IAuthenticationPostProcessor, PresencePostAuthProcessor>());
 
 		return services;
 
