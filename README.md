@@ -47,15 +47,48 @@ await stateManager.NotifySubscribersAsync<IUserState>();
 
 Registering on the wrong path results in a **compile error**, not a silent miss. See `IStateManager` XML docs and `docs/ADR-STATE-MANAGER-ASYNC.md` for full guidance.
 
-**State container hierarchy:**
+**State hierarchy:**
 
 ```
 ScopedNotificationState           ← batched notification base class
+    RemoteState                   ← async data loading with load/refresh lifecycle
     StateContainer                ← key/value storage with encryption support
         PersistableStateContainer ← adds JSON serialization/deserialization
             LocalState            ← browser localStorage backed
             SessionState          ← browser sessionStorage backed
 ```
+
+### 🔄 Remote State & Initialization
+
+`RemoteState` is the base class for client-side state that loads data from backend services. It manages loading/refreshing lifecycle with guard checks and integrates with the notification system.
+
+```csharp
+public class ProductsState(
+    IProductApi api,
+    IStateManager stateManager
+) : RemoteState, IProductsState {
+
+    public IReadOnlyList<Product> Products { get; private set; } = [];
+
+    protected override async Task LoadCoreAsync(CancellationToken cancellationToken) {
+        Products = await api.GetAllAsync(cancellationToken);
+    }
+
+    protected override void OnStateHasChanged() {
+        stateManager.NotifySubscribers<IProductsState>(this);
+    }
+}
+```
+
+Registration uses `RegisterRemoteState` on the state builder, which automatically wires up `IInitializable` discovery for startup initialization:
+
+```csharp
+services.AddClientState(state => {
+    state.RegisterRemoteState<IProductsState, ProductsState>();
+});
+```
+
+The `IInitializationOrchestrator` coordinates startup, running all `IInitializable` services in order and reporting progress through `IInitializationState` for splash screens and loading indicators.
 
 ### 🔒 Session Management
 
