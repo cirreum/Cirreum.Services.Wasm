@@ -23,7 +23,7 @@
 	</ItemGroup>
 
 	<ItemGroup Condition="'$(UseLocalComponents)' != 'true'">
-		<PackageReference Include="Cirreum.Core" Version="2.0.1" />
+		<PackageReference Include="Cirreum.Core" Version="2.0.2" />
 	</ItemGroup>
 
 	<ItemGroup Condition="'$(UseLocalComponents)' == 'true'">
@@ -41,18 +41,8 @@
 		<Content Update="tsconfig.json" CopyToOutputDirectory="Never" Pack="false" />
 	</ItemGroup>
 
-	<Target Name="DiagnosePackContent" BeforeTargets="GenerateNuspec">
-		<Message Importance="high" Text="========== DIAGNOSING PACK CONTENT ==========" />
-		<Message Importance="high" Text="Content items:" />
-		<Message Importance="high" Text="  %(Content.Identity) -&gt; PackagePath=%(Content.PackagePath), Pack=%(Content.Pack)" />
-		<Message Importance="high" Text="----------------------------------------" />
-		<Message Importance="high" Text="ContentWithTargetPath items:" />
-		<Message Importance="high" Text="  %(ContentWithTargetPath.Identity) -&gt; TargetPath=%(ContentWithTargetPath.TargetPath)" />
-		<Message Importance="high" Text="============================================" />
-	</Target>
-
 	<!-- SDK 9.0.300 Broken with WASM Standalone Razor JS Modules -->
-	<!-- IS THIS STILL AN ISSUE .NET 10.0,100??  -->
+	<!-- Yes, STILL AN ISSUE - .NET Sdk 10.0.100, 10.0.200  -->
 	<Target Name="NormalizeContentPathsForLinux" BeforeTargets="GetTargetPathWithTargetPlatformMoniker" Condition="$([MSBuild]::IsOSPlatform('Linux'))">
 
 		<Message Importance="high" Text="Building on Linux!" />

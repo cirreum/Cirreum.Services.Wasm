@@ -149,9 +149,6 @@ public static partial class HostingExtensions {
 		// Register default state container encryption (no encryption)
 		services.TryAddSingleton(BuiltInEncryption.None);
 
-		// Register initialization state service
-		services.TryAddScoped<IInitializationState, InitializationState>();
-
 		// Allow the user to register application state
 		var stateBuilder = new StateBuilder(services);
 		configureState(stateBuilder);
@@ -160,6 +157,7 @@ public static partial class HostingExtensions {
 		services.TryAddScoped<IStateManager, StateManager>();
 
 		// Register foundational services		
+		services.TryAddScoped<IInitializationState, InitializationState>();
 		services.TryAddScoped<INotificationState, NotificationState>();
 		services.TryAddScoped<IThemeState, ThemeState>();
 		services.TryAddScoped<IPageState, PageState>();

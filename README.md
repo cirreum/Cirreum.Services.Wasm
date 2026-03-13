@@ -24,28 +24,17 @@ Base → Common → Core → Infrastructure → Runtime → Runtime Extensions
 
 ### 📡 State Management
 
-A dual-path notification system designed around Blazor WASM's unique runtime characteristics.
+A synchronous notification system designed around Blazor WASM's unique runtime characteristics. In WASM, JavaScript runs on the same thread as .NET, enabling direct synchronous JS interop with zero task scheduling overhead.
 
-In WASM, JavaScript runs on the same thread as .NET, enabling direct synchronous JS interop with zero task scheduling overhead. This makes the sync notification path essential — not optional — for state that drives JS calls, theme updates, or in-memory UI state.
-
-**Two paths, compile-time enforced:**
+All state types implement `IApplicationState`. Subscribe to changes and notify subscribers through `IStateManager`:
 
 ```csharp
-// Sync — JS interop, in-memory UI, theme, page state
-// State interface must implement IApplicationState
+// Subscribe to state changes
 stateManager.Subscribe<IThemeState>(state => jsModule.ApplyTheme(state.Current));
+
+// Notify subscribers after mutation
 stateManager.NotifySubscribers<IThemeState>();
-
-// Async — persistence, navigation, app user hydration
-// State interface must implement IAsyncApplicationState
-stateManager.SubscribeAsync<IUserState>(async state => {
-    await storage.SetAsync("userId", state.Id);
-    navigation.NavigateTo(Routes.Dashboard);
-});
-await stateManager.NotifySubscribersAsync<IUserState>();
 ```
-
-Registering on the wrong path results in a **compile error**, not a silent miss. See `IStateManager` XML docs and `docs/ADR-STATE-MANAGER-ASYNC.md` for full guidance.
 
 **State hierarchy:**
 
@@ -90,6 +79,39 @@ services.AddClientState(state => {
 
 The `IInitializationOrchestrator` coordinates startup, running all `IInitializable` services in order and reporting progress through `IInitializationState` for splash screens and loading indicators.
 
+### 📋 Initialization State
+
+`IInitializationState` tracks application startup progress with deterministic task counting and error collection. It enables splash screens and loading indicators to display meaningful progress.
+
+```csharp
+// Subscribe to initialization progress
+stateManager.Subscribe<IInitializationState>(state => {
+    progressBar.Value = state.CompletedTasks;
+    progressBar.Max = state.TotalTasks;
+    statusLabel.Text = state.DisplayStatus;
+});
+```
+
+Key properties: `IsInitializing`, `TotalTasks`, `CompletedTasks`, `DisplayStatus`, `HasErrors`, `Errors`. Errors are captured as `InitializationError` records with store name, exception details, and timestamp — allowing the UI to surface partial failures without blocking the entire startup pipeline.
+
+### 🔔 Notification State
+
+`INotificationState` provides in-app notification management with read/dismiss semantics. Notifications are stored newest-first and support soft dismissal (hidden but retained) and hard removal.
+
+```csharp
+// Add a notification
+notificationState.AddNotification(
+    Notification.Create("Deployment complete", "v2.1 deployed to production", NotificationType.Success)
+);
+
+// React to notification changes
+stateManager.Subscribe<INotificationState>(state => {
+    badge.Count = state.UnreadCount;
+});
+```
+
+Operations: `AddNotification`, `MarkAsRead` / `MarkAllAsRead`, `Dismiss` / `DismissAll`, `RemoveNotification`, `ClearAll`. The `Notifications` property automatically filters dismissed items, while `UnreadCount` reflects only unread, non-dismissed notifications.
+
 ### 🔒 Session Management
 
 Sophisticated lifecycle management with configurable timeout stages and activity monitoring:
@@ -116,7 +138,7 @@ Local and session storage abstractions with WebAssembly file system support:
 
 ### 👤 User Presence
 
-Activity detection through DOM events and HTTP call interception with configurable throttling. Drives `IUserPresenceState` sync notifications via the JS interop path.
+Activity detection through DOM events and HTTP call interception with configurable throttling. Drives `IUserPresenceState` notifications via the JS interop path.
 
 ### 🔐 Security
 
@@ -127,11 +149,29 @@ Content Security Policy builder and role-based authorization support for WASM cl
 ## Registration
 
 ```csharp
-// Register all core services
-builder.Services.AddCoreServices(storage => {
-    // Optional storage configuration
+// Register all core client state services with defaults
+builder.AddClientState();
+
+// Or with custom configuration
+builder.AddClientState(state => {
+    state.RegisterRemoteState<IProductsState, ProductsState>();
+    state.RegisterDecryptor(StateEncryptionKinds.CUSTOM, new CustomDecryptor());
 });
 ```
+
+**Built-in services registered by `AddClientState`:**
+
+| Service | Purpose |
+|---------|---------|
+| `IStateManager` | Core state management and subscriber notification |
+| `IInitializationState` | Startup progress tracking and error collection |
+| `INotificationState` | In-app notification management |
+| `IThemeState` | Application theme state |
+| `IPageState` | Page title and navigation metadata |
+| `IUserPresenceState` | User activity detection |
+| `IMemoryState` | In-memory state container |
+| `ISessionState` | Browser `sessionStorage` backed container |
+| `ILocalState` | Browser `localStorage` backed container |
 
 ---
 
@@ -139,14 +179,11 @@ builder.Services.AddCoreServices(storage => {
 
 ### State Notification Design
 
-The `StateManager` implementation maintains two separate subscriber dictionaries — one for sync (`Action<TState>`) and one for async (`Func<TState, Task>`) delegates. They are never mixed or interleaved.
+The `StateManager` maintains a subscriber dictionary of `Action<TState>` delegates, with version-tracked caching for efficient subscriber list retrieval. Source-generated logging (`[LoggerMessage]`) is used throughout for zero-overhead log filtering.
 
 ```
-Sync subscribers  → _subscribers dict      → notified by NotifySubscribers
-Async subscribers → _asyncSubscribers dict → notified by NotifySubscribersAsync
+Subscribers → _subscribers dict → notified by NotifySubscribers
 ```
-
-Version-tracked caching is applied to both lists independently. Source-generated logging (`[LoggerMessage]`) is used throughout for zero-overhead log filtering.
 
 ### ScopedNotificationState
 
@@ -157,7 +194,7 @@ Version-tracked caching is applied to both lists independently. Source-generated
 | `NotifyStateChanged()` | Single mutation — one property changed |
 | `CreateNotificationScope()` | Multiple mutations — batch into one notification |
 
-Never wrap single-mutation methods in `CreateNotificationScope`. Callers use scopes to batch multiple method calls — internal scopes break that pattern. See `docs/ADR-STATE-MANAGER-ASYNC.md` for details.
+Never wrap single-mutation methods in `CreateNotificationScope`. Callers use scopes to batch multiple method calls — internal scopes break that pattern.
 
 ### State Container Encryption
 
@@ -185,13 +222,8 @@ Never wrap single-mutation methods in `CreateNotificationScope`. Callers use sco
 6. **Follow .NET conventions**  
    Use established patterns from Microsoft.Extensions.* libraries.
 
-7. **Respect the two-path notification model**  
-   Do not merge sync and async subscriber lists. The separation is load-bearing
-   for WASM performance. See `docs/ADR-STATE-MANAGER-ASYNC.md`.
-
 ## Documentation
 
-- [State Manager ADR](docs/ADR-STATE-MANAGER-ASYNC.md) — full rationale for dual-path notification design
 - [CLAUDE.md](CLAUDE.md) — AI-assisted development context
 
 ## Versioning

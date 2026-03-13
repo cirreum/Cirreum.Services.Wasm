@@ -3,7 +3,7 @@
 /// <summary>
 /// Default implementation of the <see cref="IPageState"/> state section.
 /// </summary>
-internal sealed class PageState(
+sealed class PageState(
 	IStateManager stateManager
 ) : ScopedNotificationState, IPageState {
 

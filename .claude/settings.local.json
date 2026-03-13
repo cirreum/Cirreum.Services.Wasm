@@ -8,7 +8,11 @@
       "Bash(powershell:*)",
       "Bash(test:*)",
       "Bash(where /r \"C:\\\\Cirreum\\\\Core\\\\Cirreum.Core\\\\src\" *.cs)",
-      "Bash(git -C \"C:\\\\Cirreum\\\\Infrastructure\\\\Cirreum.Services.Wasm\" log --oneline -10)"
+      "Bash(git -C \"C:\\\\Cirreum\\\\Infrastructure\\\\Cirreum.Services.Wasm\" log --oneline -10)",
+      "Bash(xargs grep:*)",
+      "Bash(dotnet build:*)",
+      "Bash(ls \"C:\\\\Cirreum\\\\Core\\\\Cirreum.Core\"/*.sln)",
+      "Bash(ls \"C:\\\\Cirreum\\\\Core\\\\Cirreum.Core\"/*.csproj)"
     ]
   }
 }

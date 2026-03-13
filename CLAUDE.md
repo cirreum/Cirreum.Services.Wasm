@@ -20,46 +20,18 @@ This package can reference `Cirreum.Core` and below. It cannot reference Runtime
 
 ## State Management — Critical Context
 
-### Two Notification Paths
+### Notification System
 
-`StateManager` maintains **two separate subscriber lists** — sync and async. They are not
-interchangeable. This is a deliberate design decision load-bearing for WASM performance.
+`StateManager` maintains a subscriber dictionary of `Action<TState>` delegates. All state types
+implement `IApplicationState`. Subscribers are notified synchronously via `NotifySubscribers`.
 
-**Why two paths exist:**
 In Blazor WASM, JavaScript runs on the same thread as .NET. This enables synchronous JS interop
-calls with zero task scheduling overhead. Many state types drive sync JS calls (theme, page state,
-presence, auth interop). Collapsing to a single async path would force those calls through
-unnecessary task machinery and eliminate a key WASM performance advantage.
+calls with zero task scheduling overhead — the synchronous notification path is load-bearing
+for WASM performance.
 
 ```
-Sync path  → NotifySubscribers    → fires Action<TState> subscribers
-Async path → NotifySubscribersAsync → fires Func<TState,Task> subscribers
-```
-
-**They never interleave. Registering on the wrong path = silent miss.**
-
-### Marker Interface Enforcement
-
-```csharp
-IApplicationState        // sync state — use Subscribe / NotifySubscribers
-IAsyncApplicationState   // async state — use SubscribeAsync / NotifySubscribersAsync
-```
-
-The compiler enforces this via generic type constraints on `IStateManager`. Wrong marker =
-compile error. Do not remove or relax these constraints.
-
-### Subscribe vs SubscribeAsync
-
-```csharp
-// Sync — JS interop, in-memory UI, theme, page state
-stateManager.Subscribe<IThemeState>(state => jsModule.ApplyTheme(state.Current));
-
-// Async — persistence, navigation, app user hydration
-// IUserState must implement IAsyncApplicationState
-stateManager.SubscribeAsync<IUserState>(async state => {
-    await storage.SetAsync("userId", state.Id);
-    navigation.NavigateTo(Routes.Dashboard);
-});
+Subscribe → registers Action<TState> subscriber
+NotifySubscribers → fires all subscribers for that state type
 ```
 
 ### NotifySubscribers — Which Overload
@@ -74,7 +46,7 @@ protected override void OnStateHasChanged() {
 }
 ```
 
-Always pass `this` inside `OnStateHasChanged` / `OnStateHasChangedAsync`. DI may not resolve
+Always pass `this` inside `OnStateHasChanged`. DI may not resolve
 the same instance that was mutated, especially in testing or non-singleton registrations.
 
 ---
@@ -111,33 +83,10 @@ state.SetB(b); // fires TWO notifications instead of one
 
 ---
 
-## IClientUserState
-
-`IUserState` is shared across WASM, Server, and Serverless. Server/Serverless resolve user
-state per-request — no notification concern. Making `IUserState` implement
-`IAsyncApplicationState` would be wrong for those environments.
-
-The WASM-specific async notification contract lives in:
-
-```csharp
-// Cirreum.Runtime.Wasm
-public interface IClientUserState : IUserState, IAsyncApplicationState { }
-```
-
-In WASM:
-- Read user data → resolve `IUserState`
-- Subscribe to auth changes → use `IClientUserState`
-- Mutate internal state → cast to `ClientUser` (internal)
-- Notify → `stateManager.NotifySubscribersAsync<IClientUserState>(clientUser)`
-
----
-
 ## StateManager Implementation Notes
 
-- Two dictionaries: `_subscribers` (sync) and `_asyncSubscribers` (async)
-- Two cache dictionaries mirroring the above with version tracking
-- `GetCachedSubscribers(type, sync: bool)` routes to the correct list
-- `IncrementVersion(type, sync: bool)` invalidates the correct cache
+- Single subscriber dictionary: `_subscribers` with `Action<TState>` delegates
+- Version-tracked caching for efficient subscriber list retrieval
 - Source-generated logging via `[LoggerMessage]` in nested `static partial class Log`
 - `Interlocked` used for `_scopeCount` in `ScopedNotificationState` — thread-safe for Server
 
@@ -147,15 +96,14 @@ In WASM:
 
 | Concern | Package |
 |---------|---------|
-| `IApplicationState`, `IAsyncApplicationState`, `IStateManager` | `Cirreum.Core` |
+| `IApplicationState`, `IStateManager` | `Cirreum.Core` |
 | `ScopedNotificationState`, `StateContainer`, `StateManager` | `Cirreum.Services.Wasm` (this repo) |
-| `IClientUserState`, `CommonClaimsPrincipalFactory` | `Cirreum.Runtime.Wasm` |
+| `CommonClaimsPrincipalFactory` | `Cirreum.Runtime.Wasm` |
 | `MsalClaimsPrincipalFactory` | `Cirreum.Runtime.Wasm.Msal` |
 
 ---
 
 ## See Also
 
-- `docs/ADR-STATE-MANAGER-ASYNC.md` — full decision record with rationale
 - `Cirreum.Core` README — state management section
-- `IStateManager` XML docs — inline guidance on path selection
+- `IStateManager` XML docs — inline guidance on subscription and notification

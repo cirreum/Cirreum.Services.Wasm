@@ -11,7 +11,7 @@ namespace Cirreum.State;
 /// to enable reactive UI updates for splash screens and loading indicators.
 /// </para>
 /// </remarks>
-public class InitializationState(
+sealed class InitializationState(
 	IStateManager stateManager
 ) : ScopedNotificationState, IInitializationState {
 

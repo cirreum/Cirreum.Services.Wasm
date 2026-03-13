@@ -1,6 +1,6 @@
 ﻿namespace Cirreum.State;
 
-internal class NotificationState(
+sealed class NotificationState(
 	IStateManager stateManager
 ) : ScopedNotificationState, INotificationState {
 

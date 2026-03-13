@@ -1,4 +1,4 @@
-﻿namespace Cirreum.State;
+namespace Cirreum.State;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -6,23 +6,18 @@ using System.Collections.Concurrent;
 
 /// <summary>
 /// Implementation of the state manager with logging support.
-/// Supports both synchronous and asynchronous subscriber patterns via separate lists.
-/// Sync subscribers are notified via <see cref="NotifySubscribers{TState}()"/>.
-/// Async subscribers are notified via <see cref="NotifySubscribersAsync{TState}(TState, CancellationToken)"/>.
+/// Manages subscriber registration, notification broadcasting, and state caching.
 /// </summary>
 sealed partial class StateManager : IStateManager {
 
 	private readonly Dictionary<Type, List<Delegate>> _subscribers = [];
-	private readonly Dictionary<Type, List<Delegate>> _asyncSubscribers = [];
 	private readonly Lock _lock = new();
 	private readonly ILogger<StateManager> _logger;
 	private readonly IServiceProvider _serviceProvider;
 
 	// Cache for subscriber lists with version tracking
 	private readonly ConcurrentDictionary<Type, (List<Delegate> Subscribers, int Version)> _subscriberCache = new();
-	private readonly ConcurrentDictionary<Type, (List<Delegate> Subscribers, int Version)> _asyncSubscriberCache = new();
 	private readonly ConcurrentDictionary<Type, int> _subscriberVersions = new();
-	private readonly ConcurrentDictionary<Type, int> _asyncSubscriberVersions = new();
 	private readonly ConcurrentDictionary<Type, object> _stateCache = new();
 
 	private readonly Guid StateId = Guid.NewGuid();
@@ -49,7 +44,7 @@ sealed partial class StateManager : IStateManager {
 	}
 
 	// -------------------------------------------------------------------------
-	// Sync Subscribe
+	// Subscribe
 	// -------------------------------------------------------------------------
 
 	/// <inheritdoc/>
@@ -75,51 +70,16 @@ sealed partial class StateManager : IStateManager {
 				Log.CreatedSubscriberList(this._logger, cacheKey.Name);
 			}
 			value.Add(handler);
-			this.IncrementVersion(cacheKey, sync: true);
+			this.IncrementVersion(cacheKey);
 		}
 
 		Log.AddedSubscriber(this._logger, cacheKey.Name);
 
-		return new SubscriptionToken(() => this.RemoveSubscriber(cacheKey, handler, sync: true), this._logger);
+		return new SubscriptionToken(() => this.RemoveSubscriber(cacheKey, handler), this._logger);
 	}
 
 	// -------------------------------------------------------------------------
-	// Async Subscribe
-	// -------------------------------------------------------------------------
-
-	/// <inheritdoc/>
-	public IDisposable SubscribeAsync<TState>(Func<Task> handler) where TState : IAsyncApplicationState {
-		ArgumentNullException.ThrowIfNull(handler);
-		return this.SubscribeAsync<TState>(_ => handler());
-	}
-
-	/// <inheritdoc/>
-	public IDisposable SubscribeAsync<TState>(Func<TState, Task> handler) where TState : IAsyncApplicationState {
-		ArgumentNullException.ThrowIfNull(handler);
-
-		var cacheKey = ResolveCacheKey<TState>();
-		_ = this.GetFromCacheKey<TState>(cacheKey);
-
-		Log.AddingAsyncSubscriber(this._logger, cacheKey.Name);
-
-		lock (this._lock) {
-			if (!this._asyncSubscribers.TryGetValue(cacheKey, out var value)) {
-				value = [];
-				this._asyncSubscribers[cacheKey] = value;
-				this._asyncSubscriberVersions.TryAdd(cacheKey, 0);
-				Log.CreatedAsyncSubscriberList(this._logger, cacheKey.Name);
-			}
-			value.Add(handler);
-			this.IncrementVersion(cacheKey, sync: false);
-		}
-
-		Log.AddedAsyncSubscriber(this._logger, cacheKey.Name);
-
-		return new SubscriptionToken(() => this.RemoveSubscriber(cacheKey, handler, sync: false), this._logger);
-	}
-
-	// -------------------------------------------------------------------------
-	// Sync Notify
+	// Notify
 	// -------------------------------------------------------------------------
 
 	/// <inheritdoc/>
@@ -134,26 +94,6 @@ sealed partial class StateManager : IStateManager {
 		ArgumentNullException.ThrowIfNull(state);
 		var cacheKey = ResolveCacheKey<TState>();
 		this.NotifySubscribersInternal(cacheKey, state);
-	}
-
-	// -------------------------------------------------------------------------
-	// Async Notify
-	// -------------------------------------------------------------------------
-
-	/// <inheritdoc/>
-	public async Task NotifySubscribersAsync<TState>(CancellationToken cancellationToken = default)
-		where TState : class, IAsyncApplicationState {
-		var cacheKey = ResolveCacheKey<TState>();
-		var diInstance = this.GetFromCacheKey<TState>(cacheKey);
-		await this.NotifySubscribersInternalAsync(cacheKey, diInstance, cancellationToken);
-	}
-
-	/// <inheritdoc/>
-	public async Task NotifySubscribersAsync<TState>(TState state, CancellationToken cancellationToken = default)
-		where TState : class, IAsyncApplicationState {
-		ArgumentNullException.ThrowIfNull(state);
-		var cacheKey = ResolveCacheKey<TState>();
-		await this.NotifySubscribersInternalAsync(cacheKey, state, cancellationToken);
 	}
 
 	// -------------------------------------------------------------------------
@@ -210,7 +150,7 @@ sealed partial class StateManager : IStateManager {
 
 		Log.BeginNotify(this._logger, cacheKey.Name);
 
-		var subscribersCopy = this.GetCachedSubscribers(cacheKey, sync: true);
+		var subscribersCopy = this.GetCachedSubscribers(cacheKey);
 		if (subscribersCopy.Count == 0) {
 			Log.NoSubscribers(this._logger, cacheKey.Name);
 			return;
@@ -238,57 +178,16 @@ sealed partial class StateManager : IStateManager {
 		Log.NotifyComplete(this._logger, cacheKey.Name, notificationCount, mismatchCount, errorCount);
 	}
 
-	private async Task NotifySubscribersInternalAsync<TState>(Type cacheKey, TState stateSection, CancellationToken cancellationToken)
-		where TState : class, IApplicationState {
-		ArgumentNullException.ThrowIfNull(stateSection);
-
-		Log.BeginAsyncNotify(this._logger, cacheKey.Name);
-
-		var subscribersCopy = this.GetCachedSubscribers(cacheKey, sync: false);
-		if (subscribersCopy.Count == 0) {
-			Log.NoAsyncSubscribers(this._logger, cacheKey.Name);
-			return;
-		}
-
-		var notificationCount = 0;
-		var mismatchCount = 0;
-		var errorCount = 0;
-
-		foreach (var subscriber in subscribersCopy) {
-			cancellationToken.ThrowIfCancellationRequested();
-			try {
-				if (subscriber is Func<TState, Task> asyncAction) {
-					await asyncAction.Invoke(stateSection);
-					notificationCount++;
-				} else {
-					Log.AsyncSubscriberMismatch(this._logger, cacheKey.Name, typeof(TState).Name, subscriber.GetType().FullName ?? "unknown");
-					mismatchCount++;
-				}
-			} catch (Exception ex) when (ex is not OperationCanceledException) {
-				errorCount++;
-				Log.AsyncSubscriberError(this._logger, ex, notificationCount + errorCount, cacheKey.Name);
-			}
-		}
-
-		Log.AsyncNotifyComplete(this._logger, cacheKey.Name, notificationCount, mismatchCount, errorCount);
-	}
-
-	private void RemoveSubscriber(Type cacheKey, Delegate handler, bool sync) {
-		var subscribers = sync ? this._subscribers : this._asyncSubscribers;
+	private void RemoveSubscriber(Type cacheKey, Delegate handler) {
 		lock (this._lock) {
-			if (subscribers.TryGetValue(cacheKey, out var value)) {
+			if (this._subscribers.TryGetValue(cacheKey, out var value)) {
 				if (value.Remove(handler)) {
 					Log.RemovedSubscriber(this._logger, cacheKey.Name);
-					this.IncrementVersion(cacheKey, sync);
+					this.IncrementVersion(cacheKey);
 					if (value.Count == 0) {
-						subscribers.Remove(cacheKey);
-						if (sync) {
-							this._subscriberVersions.TryRemove(cacheKey, out _);
-							this._subscriberCache.TryRemove(cacheKey, out _);
-						} else {
-							this._asyncSubscriberVersions.TryRemove(cacheKey, out _);
-							this._asyncSubscriberCache.TryRemove(cacheKey, out _);
-						}
+						this._subscribers.Remove(cacheKey);
+						this._subscriberVersions.TryRemove(cacheKey, out _);
+						this._subscriberCache.TryRemove(cacheKey, out _);
 						Log.RemovedEmptySubscriberList(this._logger, cacheKey.Name);
 					}
 				} else {
@@ -300,38 +199,31 @@ sealed partial class StateManager : IStateManager {
 		}
 	}
 
-	private void IncrementVersion(Type type, bool sync) {
-		var versions = sync ? this._subscriberVersions : this._asyncSubscriberVersions;
-		var cache = sync ? this._subscriberCache : this._asyncSubscriberCache;
-
-		versions.AddOrUpdate(type, 1, (_, current) => current + 1);
-		cache.TryRemove(type, out _);
+	private void IncrementVersion(Type type) {
+		this._subscriberVersions.AddOrUpdate(type, 1, (_, current) => current + 1);
+		this._subscriberCache.TryRemove(type, out _);
 	}
 
-	private List<Delegate> GetCachedSubscribers(Type type, bool sync) {
-		var versions = sync ? this._subscriberVersions : this._asyncSubscriberVersions;
-		var cache = sync ? this._subscriberCache : this._asyncSubscriberCache;
-		var subscribers = sync ? this._subscribers : this._asyncSubscribers;
-
-		if (!versions.TryGetValue(type, out var currentVersion)) {
+	private List<Delegate> GetCachedSubscribers(Type type) {
+		if (!this._subscriberVersions.TryGetValue(type, out var currentVersion)) {
 			return [];
 		}
 
-		if (cache.TryGetValue(type, out var cached) && cached.Version == currentVersion) {
+		if (this._subscriberCache.TryGetValue(type, out var cached) && cached.Version == currentVersion) {
 			Log.UsingCachedSubscribers(this._logger, type.Name);
 			return cached.Subscribers;
 		}
 
 		lock (this._lock) {
-			if (!versions.TryGetValue(type, out currentVersion)) {
+			if (!this._subscriberVersions.TryGetValue(type, out currentVersion)) {
 				return [];
 			}
-			if (!subscribers.TryGetValue(type, out var list)) {
+			if (!this._subscribers.TryGetValue(type, out var list)) {
 				return [];
 			}
 
 			List<Delegate> copy = [.. list];
-			cache.AddOrUpdate(type, (copy, currentVersion), (_, _) => (copy, currentVersion));
+			this._subscriberCache.AddOrUpdate(type, (copy, currentVersion), (_, _) => (copy, currentVersion));
 			Log.CreatedCachedSubscribers(this._logger, type.Name);
 			return copy;
 		}
@@ -354,23 +246,14 @@ sealed partial class StateManager : IStateManager {
 		[LoggerMessage(Level = LogLevel.Debug, Message = "Successfully retrieved state of type {StateType}")]
 		public static partial void RetrievedState(ILogger logger, string stateType);
 
-		[LoggerMessage(Level = LogLevel.Debug, Message = "Adding sync subscriber for type {StateType}")]
+		[LoggerMessage(Level = LogLevel.Debug, Message = "Adding subscriber for type {StateType}")]
 		public static partial void AddingSubscriber(ILogger logger, string stateType);
 
-		[LoggerMessage(Level = LogLevel.Debug, Message = "Created new sync subscriber list for type {StateType}")]
+		[LoggerMessage(Level = LogLevel.Debug, Message = "Created new subscriber list for type {StateType}")]
 		public static partial void CreatedSubscriberList(ILogger logger, string stateType);
 
-		[LoggerMessage(Level = LogLevel.Debug, Message = "Successfully added sync subscriber for type {StateType}")]
+		[LoggerMessage(Level = LogLevel.Debug, Message = "Successfully added subscriber for type {StateType}")]
 		public static partial void AddedSubscriber(ILogger logger, string stateType);
-
-		[LoggerMessage(Level = LogLevel.Debug, Message = "Adding async subscriber for type {StateType}")]
-		public static partial void AddingAsyncSubscriber(ILogger logger, string stateType);
-
-		[LoggerMessage(Level = LogLevel.Debug, Message = "Created new async subscriber list for type {StateType}")]
-		public static partial void CreatedAsyncSubscriberList(ILogger logger, string stateType);
-
-		[LoggerMessage(Level = LogLevel.Debug, Message = "Successfully added async subscriber for type {StateType}")]
-		public static partial void AddedAsyncSubscriber(ILogger logger, string stateType);
 
 		[LoggerMessage(Level = LogLevel.Debug, Message = "Successfully removed subscriber for type {StateType}")]
 		public static partial void RemovedSubscriber(ILogger logger, string stateType);
@@ -384,35 +267,20 @@ sealed partial class StateManager : IStateManager {
 		[LoggerMessage(Level = LogLevel.Warning, Message = "Failed to remove subscriber for type {StateType}: No subscribers found")]
 		public static partial void RemoveSubscriberListNotFound(ILogger logger, string stateType);
 
-		[LoggerMessage(Level = LogLevel.Debug, Message = "Beginning sync notification for type {StateType}")]
+		[LoggerMessage(Level = LogLevel.Debug, Message = "Beginning notification for type {StateType}")]
 		public static partial void BeginNotify(ILogger logger, string stateType);
 
-		[LoggerMessage(Level = LogLevel.Debug, Message = "No sync subscribers found for type {StateType}")]
+		[LoggerMessage(Level = LogLevel.Debug, Message = "No subscribers found for type {StateType}")]
 		public static partial void NoSubscribers(ILogger logger, string stateType);
 
-		[LoggerMessage(Level = LogLevel.Warning, Message = "Sync subscriber type mismatch for {StateType}. Expected: Action<{ExpectedType}>, Found: {ActualType}")]
+		[LoggerMessage(Level = LogLevel.Warning, Message = "Subscriber type mismatch for {StateType}. Expected: Action<{ExpectedType}>, Found: {ActualType}")]
 		public static partial void SubscriberMismatch(ILogger logger, string stateType, string expectedType, string actualType);
 
-		[LoggerMessage(Level = LogLevel.Error, Message = "Error notifying sync subscriber #{SubscriberNumber} for type {StateType}")]
+		[LoggerMessage(Level = LogLevel.Error, Message = "Error notifying subscriber #{SubscriberNumber} for type {StateType}")]
 		public static partial void SubscriberError(ILogger logger, Exception ex, int subscriberNumber, string stateType);
 
-		[LoggerMessage(Level = LogLevel.Debug, Message = "Completed sync notifications for {StateType}: {SuccessCount} successful, {MismatchCount} mismatches, {ErrorCount} failed")]
+		[LoggerMessage(Level = LogLevel.Debug, Message = "Completed notifications for {StateType}: {SuccessCount} successful, {MismatchCount} mismatches, {ErrorCount} failed")]
 		public static partial void NotifyComplete(ILogger logger, string stateType, int successCount, int mismatchCount, int errorCount);
-
-		[LoggerMessage(Level = LogLevel.Debug, Message = "Beginning async notification for type {StateType}")]
-		public static partial void BeginAsyncNotify(ILogger logger, string stateType);
-
-		[LoggerMessage(Level = LogLevel.Debug, Message = "No async subscribers found for type {StateType}")]
-		public static partial void NoAsyncSubscribers(ILogger logger, string stateType);
-
-		[LoggerMessage(Level = LogLevel.Warning, Message = "Async subscriber type mismatch for {StateType}. Expected: Func<{ExpectedType}, Task>, Found: {ActualType}")]
-		public static partial void AsyncSubscriberMismatch(ILogger logger, string stateType, string expectedType, string actualType);
-
-		[LoggerMessage(Level = LogLevel.Error, Message = "Error notifying async subscriber #{SubscriberNumber} for type {StateType}")]
-		public static partial void AsyncSubscriberError(ILogger logger, Exception ex, int subscriberNumber, string stateType);
-
-		[LoggerMessage(Level = LogLevel.Debug, Message = "Completed async notifications for {StateType}: {SuccessCount} successful, {MismatchCount} mismatches, {ErrorCount} failed")]
-		public static partial void AsyncNotifyComplete(ILogger logger, string stateType, int successCount, int mismatchCount, int errorCount);
 
 		[LoggerMessage(Level = LogLevel.Debug, Message = "Using cached subscriber list for type {StateType}")]
 		public static partial void UsingCachedSubscribers(ILogger logger, string stateType);
