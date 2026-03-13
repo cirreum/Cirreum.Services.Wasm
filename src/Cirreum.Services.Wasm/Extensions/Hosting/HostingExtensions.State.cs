@@ -159,7 +159,8 @@ public static partial class HostingExtensions {
 		// Register core state management service
 		services.TryAddScoped<IStateManager, StateManager>();
 
-		// Register foundational services
+		// Register foundational services		
+		services.TryAddScoped<INotificationState, NotificationState>();
 		services.TryAddScoped<IThemeState, ThemeState>();
 		services.TryAddScoped<IPageState, PageState>();
 		services.TryAddScoped<IUserPresenceState, UserPresenceState>();

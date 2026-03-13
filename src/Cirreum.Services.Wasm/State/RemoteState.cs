@@ -45,7 +45,12 @@ public abstract class RemoteState : ScopedNotificationState, IRemoteState {
 	public bool IsRefreshing { get; protected set; }
 
 	/// <inheritdoc />
-	public async Task LoadAsync(CancellationToken cancellationToken = default) {
+	public Task LoadAsync() {
+		return this.LoadAsync(CancellationToken.None);
+	}
+
+	/// <inheritdoc />
+	public async Task LoadAsync(CancellationToken cancellationToken) {
 		if (this.IsLoading || this.IsLoaded) {
 			return;
 		}
@@ -55,7 +60,12 @@ public abstract class RemoteState : ScopedNotificationState, IRemoteState {
 	}
 
 	/// <inheritdoc />
-	public async Task RefreshAsync(CancellationToken cancellationToken = default) {
+	public Task RefreshAsync() {
+		return this.RefreshAsync(CancellationToken.None);
+	}
+
+	/// <inheritdoc />
+	public async Task RefreshAsync(CancellationToken cancellationToken) {
 		if (this.IsLoading || this.IsRefreshing) {
 			return;
 		}
@@ -78,7 +88,7 @@ public abstract class RemoteState : ScopedNotificationState, IRemoteState {
 	/// <param name="isRefresh">true to indicate the operation is a refresh action; otherwise, false to indicate a standard loading action. The
 	/// appropriate state indicator will be set accordingly.</param>
 	/// <returns>A task that represents the asynchronous execution of the operation.</returns>
-	protected async Task ExecuteWithLoadingState(Func<Task> operation, bool isRefresh = false) {
+	private async Task ExecuteWithLoadingState(Func<Task> operation, bool isRefresh = false) {
 		if (isRefresh) {
 			this.IsRefreshing = true;
 		} else {
