@@ -19,6 +19,8 @@ sealed class ActivityState(
 	IStateManager stateManager
 ) : ScopedNotificationState, IActivityState {
 
+	// Note: field access is not thread-safe by design.
+	// Blazor WebAssembly runs on a single thread — no synchronization is required.
 	private int _totalTasks;
 	private int _completedTasks;
 	private ActivityMode _mode = ActivityMode.Indeterminate;
@@ -82,13 +84,12 @@ sealed class ActivityState(
 		}
 
 		this._completedTasks++;
+		this.NotifyStateChanged(); // always notify, including at 100%
 
 		if (this._completedTasks >= this._totalTasks) {
 			this.ResetTasks();
-			return;
 		}
 
-		this.NotifyStateChanged();
 	}
 
 	/// <inheritdoc />

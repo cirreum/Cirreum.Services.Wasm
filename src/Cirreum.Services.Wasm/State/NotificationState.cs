@@ -5,10 +5,15 @@ sealed class NotificationState(
 ) : ScopedNotificationState, INotificationState {
 
 	private readonly List<Notification> _notifications = [];
+	private List<Notification>? _cachedNotifications;
 
 	// Only show non-dismissed notifications
-	public IReadOnlyList<Notification> Notifications =>
-		_notifications.Where(n => !n.IsDismissed).ToList().AsReadOnly();
+	public IReadOnlyList<Notification> Notifications {
+		get {
+			this._cachedNotifications ??= [.. _notifications.Where(n => !n.IsDismissed)];
+			return this._cachedNotifications.AsReadOnly();
+		}
+	}
 
 	// Count unread, non-dismissed notifications
 	public int UnreadCount => _notifications.Count(n => !n.IsRead && !n.IsDismissed);
@@ -28,12 +33,16 @@ sealed class NotificationState(
 	}
 
 	public void MarkAllAsRead() {
+		var changed = false;
 		for (var i = 0; i < _notifications.Count; i++) {
 			if (!_notifications[i].IsRead && !_notifications[i].IsDismissed) {
 				_notifications[i] = _notifications[i] with { IsRead = true };
+				changed = true;
 			}
 		}
-		this.NotifyStateChanged();
+		if (changed) {
+			this.NotifyStateChanged();
+		}
 	}
 
 	public void Dismiss(string notificationId) {
@@ -47,12 +56,16 @@ sealed class NotificationState(
 	}
 
 	public void DismissAll() {
+		var changed = false;
 		for (var i = 0; i < _notifications.Count; i++) {
 			if (!_notifications[i].IsDismissed) {
 				_notifications[i] = _notifications[i] with { IsRead = true, IsDismissed = true };
+				changed = true;
 			}
 		}
-		this.NotifyStateChanged();
+		if (changed) {
+			this.NotifyStateChanged();
+		}
 	}
 
 	// Keep for hard delete if needed
@@ -71,6 +84,7 @@ sealed class NotificationState(
 	}
 
 	protected override void OnStateHasChanged() {
+		this._cachedNotifications = null; // invalidate on any state change
 		stateManager.NotifySubscribers<INotificationState>(this);
 	}
 
