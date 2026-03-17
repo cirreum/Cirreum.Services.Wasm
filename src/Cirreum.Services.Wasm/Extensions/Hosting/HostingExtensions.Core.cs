@@ -28,7 +28,7 @@ public static partial class HostingExtensions {
 	/// </para>
 	/// <para>
 	/// Other services implemented: <see cref="IDateTimeClock"/>, <see cref="IWasmFileSystem"/>, <see cref="ICsvFileBuilder"/>, 
-	/// <see cref="ICsvFileReader"/> and <see cref="ICspBuilder"/>.
+	/// <see cref="ICsvFileReader"/>.
 	/// </para>
 	/// </remarks>
 	public static IServiceCollection AddCoreServices(this IServiceCollection services,
@@ -69,12 +69,6 @@ public static partial class HostingExtensions {
 		//
 		services
 			.AddFileSystem();
-
-		//
-		// Content Security Policy
-		//
-		services
-			.AddContentSecurityPolicy();
 
 		return services;
 
@@ -148,14 +142,6 @@ public static partial class HostingExtensions {
 		services.TryAddTransient<ICsvFileBuilder, CsvFileBuilder>();
 		services.TryAddTransient<ICsvFileReader, CsvFileReader>();
 		services.TryAddScoped<IFileSystem, NotImplementedFileSystem>();
-
-		return services;
-
-	}
-
-	private static IServiceCollection AddContentSecurityPolicy(this IServiceCollection services) {
-
-		services.TryAddScoped<ICspBuilder, CspBuilder>();
 
 		return services;
 

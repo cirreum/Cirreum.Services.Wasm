@@ -142,7 +142,7 @@ Activity detection through DOM events and HTTP call interception with configurab
 
 ### 🔐 Security
 
-Content Security Policy builder and role-based authorization support for WASM clients.
+Claims-based user context management and authentication state integration for WASM clients.
 
 ---
 
