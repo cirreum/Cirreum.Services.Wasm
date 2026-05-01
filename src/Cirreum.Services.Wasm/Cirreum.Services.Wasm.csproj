@@ -18,12 +18,12 @@
 			<PrivateAssets>all</PrivateAssets>
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		</PackageReference>
-		<PackageReference Include="Cirreum.Startup" Version="1.0.115" />
-		<PackageReference Include="Cirreum.Storage.Browser" Version="1.0.107" />
+		<PackageReference Include="Cirreum.Startup" Version="1.0.116" />
+		<PackageReference Include="Cirreum.Storage.Browser" Version="1.0.108" />
 	</ItemGroup>
 
 	<ItemGroup Condition="'$(UseLocalComponents)' != 'true'">
-		<PackageReference Include="Cirreum.Core" Version="4.0.2" />
+		<PackageReference Include="Cirreum.Core" Version="5.0.1" />
 	</ItemGroup>
 
 	<ItemGroup Condition="'$(UseLocalComponents)' == 'true'">
