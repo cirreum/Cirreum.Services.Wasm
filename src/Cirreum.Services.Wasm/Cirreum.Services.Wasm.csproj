@@ -23,7 +23,7 @@
 	</ItemGroup>
 
 	<ItemGroup Condition="'$(UseLocalComponents)' != 'true'">
-		<PackageReference Include="Cirreum.Core" Version="5.1.0" />
+		<PackageReference Include="Cirreum.Core" Version="5.2.0" />
 	</ItemGroup>
 
 	<ItemGroup Condition="'$(UseLocalComponents)' == 'true'">
