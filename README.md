@@ -3,7 +3,7 @@
 [![NuGet Version](https://img.shields.io/nuget/v/Cirreum.Services.Wasm.svg?style=flat-square&labelColor=1F1F1F&color=003D8F)](https://www.nuget.org/packages/Cirreum.Services.Wasm/)
 [![NuGet Downloads](https://img.shields.io/nuget/dt/Cirreum.Services.Wasm.svg?style=flat-square&labelColor=1F1F1F&color=003D8F)](https://www.nuget.org/packages/Cirreum.Services.Wasm/)
 [![GitHub Release](https://img.shields.io/github/v/release/cirreum/Cirreum.Services.Wasm?style=flat-square&labelColor=1F1F1F&color=FF3B2E)](https://github.com/cirreum/Cirreum.Services.Wasm/releases)
-[![License](https://img.shields.io/github/license/cirreum/Cirreum.Services.Wasm?style=flat-square&labelColor=1F1F1F&color=F2F2F2)](https://github.com/cirreum/Cirreum.Services.Wasm/blob/main/LICENSE)
+[![License](https://img.shields.io/badge/license-MIT-F2F2F2?style=flat-square&labelColor=1F1F1F)](https://github.com/cirreum/Cirreum.Services.Wasm/blob/main/LICENSE)
 [![.NET](https://img.shields.io/badge/.NET-10.0-003D8F?style=flat-square&labelColor=1F1F1F)](https://dotnet.microsoft.com/)
 
 **Foundational services infrastructure for WebAssembly client applications**
