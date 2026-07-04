@@ -3,13 +3,13 @@
 using Microsoft.JSInterop;
 using System.Threading.Tasks;
 
-sealed class NewWasmFileSystem : IWasmFileSystem, IDisposable {
+sealed class DefaultWasmFileSystem : IWasmFileSystem, IDisposable {
 
 	private static readonly string InteropUrl = "./_content/Cirreum.Services.Wasm/wasmFileSystem.js";
 	private readonly IJSRuntime JSA;
 	private IJSInProcessObjectReference? module;
 
-	public NewWasmFileSystem(IJSRuntime js) {
+	public DefaultWasmFileSystem(IJSRuntime js) {
 		ArgumentNullException.ThrowIfNull(js);
 		this.JSA = js;
 	}

@@ -137,7 +137,7 @@ public static partial class HostingExtensions {
 
 	private static IServiceCollection AddFileSystem(this IServiceCollection services) {
 
-		services.TryAddScoped<IWasmFileSystem, NewWasmFileSystem>();
+		services.TryAddScoped<IWasmFileSystem, DefaultWasmFileSystem>();
 
 		services.TryAddTransient<ICsvFileBuilder, CsvFileBuilder>();
 		services.TryAddTransient<ICsvFileReader, CsvFileReader>();
