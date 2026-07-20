@@ -23,15 +23,17 @@
 	</ItemGroup>
 
 	<ItemGroup Condition="'$(UseLocalComponents)' != 'true'">
-		<PackageReference Include="Cirreum.Domain" Version="1.2.6" />
+		<PackageReference Include="Cirreum.Domain" Version="1.2.7" />
 	</ItemGroup>
 
 	<ItemGroup Condition="'$(UseLocalComponents)' == 'true'">
-		<ProjectReference Include="..\..\..\..\Core\Cirreum.Core\src\Cirreum.Core\Cirreum.Core.csproj" />
+		<ProjectReference Include="..\..\..\..\Core\Cirreum.Domain\src\Cirreum.Domain\Cirreum.Domain.csproj" />
 	</ItemGroup>
 	
 	<!-- No JS/TS Maps or Comments -->
 	<PropertyGroup>
+		<TypeScriptTarget>ES2025</TypeScriptTarget>
+		<TypeScriptModuleKind>ESNext</TypeScriptModuleKind>	
 		<TypeScriptRemoveComments>true</TypeScriptRemoveComments>
 		<TypeScriptSourceMap>false</TypeScriptSourceMap>
 	</PropertyGroup>
