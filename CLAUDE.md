@@ -1,20 +1,42 @@
 # CLAUDE.md — Cirreum.Services.Wasm
 
 This file provides architectural context for AI-assisted development in this repository.
-Read this before making changes to state management, notification, or authentication code.
+Read this before making changes to state management, notification, or session code.
 
 ---
 
 ## Repository Role
 
-`Cirreum.Services.Wasm` provides the Blazor WASM implementations of core Cirreum infrastructure
-services. It sits in the **Infrastructure** layer:
+`Cirreum.Services.Wasm` provides the Blazor WASM implementations of core Cirreum
+infrastructure services. It sits in the **Infrastructure** layer:
 
 ```
 Base → Common → Core → Infrastructure → Runtime → Runtime Extensions
 ```
 
-This package can reference `Cirreum.Core` and below. It cannot reference Runtime packages.
+This package references `Cirreum.Domain` and below (plus `Cirreum.Startup` and
+`Cirreum.Storage.Browser`). It cannot reference Runtime packages. When
+`UseLocalComponents=true`, the `Cirreum.Domain` package reference switches to a
+project reference at `Core/Cirreum.Domain`.
+
+### Registration surface
+
+- `AddCoreServices()` — the core WASM services (user accessor, clock, storage, file system)
+- `AddClientState(...)` — state container / ViewModel registration
+- `AddSessionMonitoring(...)` — session stage tracking + expiration handling
+
+### What's here
+
+- **State/** — `StateManager` (the `IStateManager` implementation), `StateContainer`,
+  `PersistableStateContainer`, the Memory/Session/Local/Remote/Page/Theme/Activity
+  state family, and persistence helpers
+- **Authorization/** — `SessionManager` + session stages, `SessionHttpHandler`,
+  `AuthorizationRoleRegistry`
+- **Presence/** — user presence monitor/service/state
+- **Storage/** — local/session storage services over `Cirreum.Storage.Browser`
+- **Security/** — the WASM `UserAccessor`
+- **FileSystem/**, **Clock/**, **Components.Interop/** — browser-appropriate
+  implementations
 
 ---
 
@@ -53,6 +75,9 @@ the same instance that was mutated, especially in testing or non-singleton regis
 
 ## ScopedNotificationState — Scope vs NotifyStateChanged
 
+(`ScopedNotificationState` itself lives in `Cirreum.Domain`; the state types in this
+repo build on it, so the usage rules matter here.)
+
 **Single mutation methods** → use `NotifyStateChanged()`:
 ```csharp
 public void SetValue(string value) {
@@ -88,7 +113,6 @@ state.SetB(b); // fires TWO notifications instead of one
 - Single subscriber dictionary: `_subscribers` with `Action<TState>` delegates
 - Version-tracked caching for efficient subscriber list retrieval
 - Source-generated logging via `[LoggerMessage]` in nested `static partial class Log`
-- `Interlocked` used for `_scopeCount` in `ScopedNotificationState` — thread-safe for Server
 
 ---
 
@@ -96,14 +120,18 @@ state.SetB(b); // fires TWO notifications instead of one
 
 | Concern | Package |
 |---------|---------|
-| `IApplicationState`, `IStateManager` | `Cirreum.Core` |
-| `ScopedNotificationState`, `StateContainer`, `StateManager` | `Cirreum.Services.Wasm` (this repo) |
+| `IApplicationState` | `Cirreum.Kernel` |
+| `IStateManager` | `Cirreum.Contracts` |
+| `ScopedNotificationState` | `Cirreum.Domain` |
+| `StateManager`, `StateContainer`, the state family | `Cirreum.Services.Wasm` (this repo) |
 | `CommonClaimsPrincipalFactory` | `Cirreum.Runtime.Wasm` |
-| `MsalClaimsPrincipalFactory` | `Cirreum.Runtime.Wasm.Msal` |
+| `MsalClaimsPrincipalFactory` | `Cirreum.Runtime.Wasm.Msal` (Runtime Extensions) |
+| `OidcClaimsPrincipalFactory` | `Cirreum.Runtime.Wasm.Oidc` (Runtime Extensions) |
 
 ---
 
 ## See Also
 
-- `Cirreum.Core` README — state management section
-- `IStateManager` XML docs — inline guidance on subscription and notification
+- `Cirreum.Contracts` — `IStateManager` XML docs (subscription and notification guidance)
+- `Cirreum.Domain` — `ScopedNotificationState`
+- `Cirreum.Runtime.Wasm` — the WASM runtime client that composes these services
