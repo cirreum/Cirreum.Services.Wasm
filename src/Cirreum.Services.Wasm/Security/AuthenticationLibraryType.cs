@@ -15,7 +15,10 @@ using System.ComponentModel;
 /// configuration, not per-user state.
 /// </para>
 /// <para>
-/// See <see cref="IdentityProviderType"/> for the IdP-level implementations.
+/// This names the client-side <em>library</em>, not the identity provider behind it — several
+/// providers are reached through the same library. When an application needs to distinguish the
+/// provider itself, the token's issuer (<c>UserProfile.Issuer</c>) identifies it exactly, and the
+/// authenticated scheme is the authoritative per-request answer on the server.
 /// </para>
 /// </remarks>
 public enum AuthenticationLibraryType {

@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `AuthenticationLibraryType`'s documentation referenced `IdentityProviderType`, removed in
+  `Cirreum.Kernel` 2.0.0, which would leave a dangling `cref` once this package re-pins. Its
+  remarks now state the distinction directly: this names the client-side *library*, not the
+  identity provider behind it, since several providers are reached through the same library. For
+  the provider itself, `UserProfile.Issuer` identifies it exactly.
+
 ## [1.0.35] - 2026-07-24
 
 ### Updated
