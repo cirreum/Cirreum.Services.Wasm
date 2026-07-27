@@ -167,7 +167,7 @@ builder.AddClientState(state => {
 | `IInitializationState` | Startup progress tracking and error collection |
 | `INotificationState` | In-app notification management |
 | `IThemeState` | Application theme state |
-| `IPageState` | Page title and navigation metadata |
+| `IBrowserDocumentState` | Document title, application name, PWA display mode |
 | `IUserPresenceState` | User activity detection |
 | `IMemoryState` | In-memory state container |
 | `ISessionState` | Browser `sessionStorage` backed container |

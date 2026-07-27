@@ -1,4 +1,7 @@
-namespace Cirreum.State;
+namespace Cirreum;
+
+using Cirreum.State;
+
 
 /// <summary>
 /// Default implementation of <see cref="IActivityState"/> that tracks

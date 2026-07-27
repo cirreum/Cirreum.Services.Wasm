@@ -1,4 +1,4 @@
-﻿namespace Cirreum;
+namespace Cirreum;
 
 using Cirreum.Presence;
 using Cirreum.State;
@@ -109,7 +109,7 @@ public static partial class HostingExtensions {
 	/// <list type="bullet">
 	///   <item><see cref="IStateManager"/> - Core state management service</item>
 	///   <item><see cref="IThemeState"/> - Application theme state</item>
-	///   <item><see cref="IPageState"/> - Page navigation and routing state</item>
+	///   <item><see cref="IBrowserDocumentState"/> - Browser document state (title, app name, PWA display mode)</item>
 	///   <item><see cref="IUserPresenceState"/> - User presence and activity state</item>
 	///   <item><see cref="IMemoryState"/> - In-memory state container</item>
 	///   <item><see cref="ISessionState"/> - Browser session storage state</item>
@@ -160,7 +160,7 @@ public static partial class HostingExtensions {
 		services.TryAddScoped<IActivityState, ActivityState>();
 		services.TryAddScoped<INotificationState, NotificationState>();
 		services.TryAddScoped<IThemeState, ThemeState>();
-		services.TryAddScoped<IPageState, PageState>();
+		services.TryAddScoped<IBrowserDocumentState, BrowserDocumentState>();
 		services.TryAddScoped<IUserPresenceState, UserPresenceState>();
 		services.TryAddScoped<IMemoryState, MemoryState>();
 		services.TryAddScoped<ISessionState, SessionState>();

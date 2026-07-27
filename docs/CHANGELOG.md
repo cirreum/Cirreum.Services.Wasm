@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **`PageState` → `BrowserDocumentState`**, following the `IPageState` → `IBrowserDocumentState`
+  rename in `Cirreum.Contracts` 2.0.0, along with its `PageTitle*` members → `DocumentTitle*`. The
+  type governs the browser document hosting the application — title, application name, PWA display
+  mode — none of which are properties of a Blazor *page*, and "page" already means a routable
+  component. The registration description was wrong for the same reason ("Page navigation and routing
+  state") and now says what it does. The implementation is internal, so this is not a public API
+  change.
+
+- **The feature state implementations move to the root `Cirreum` namespace**, following their
+  contracts: `ActivityState`, `BrowserDocumentState`, `NotificationState`, `ThemeState`. The
+  machinery stays in `Cirreum.State` — `StateManager`, `StateContainer`,
+  `PersistableStateContainer`, `RemoteState`, `StateBuilder`, the persistence helpers — which is
+  the same split `Cirreum.Contracts` applied to the interfaces. All four are internal, so no public
+  API changes.
+
+### Updated
+
+- Re-pinned to the `2.0.0` foundations.
+
 ### Fixed
 
 - `AuthenticationLibraryType`'s documentation referenced `IdentityProviderType`, removed in

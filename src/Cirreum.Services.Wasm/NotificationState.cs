@@ -1,4 +1,7 @@
-﻿namespace Cirreum.State;
+namespace Cirreum;
+
+using Cirreum.State;
+
 
 sealed class NotificationState(
 	IStateManager stateManager
